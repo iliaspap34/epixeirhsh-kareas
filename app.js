@@ -1,96 +1,95 @@
-const API_URL = "/api/chat";
+// ============================================================
+// BUSINESS CLUB
+// APP.JS
+// ============================================================
+
+const API_URL =
+  "https://businessclub.ilias-pap-net.workers.dev/api/chat";
 
 
-/* =========================
-   JOIN FORM
-========================= */
+// ============================================================
+// JOIN FORM
+// ============================================================
 
-const joinForm = document.getElementById("joinForm");
+const joinForm =
+  document.getElementById("joinForm");
 
-joinForm.addEventListener("submit", async (event) => {
+if (joinForm) {
+
+  joinForm.addEventListener("submit", async (event) => {
 
     event.preventDefault();
 
     const name =
-        document.getElementById("name").value.trim();
+      document.getElementById("name").value.trim();
 
     const className =
-        document.getElementById("class").value.trim();
+      document.getElementById("class").value.trim();
 
     const contribution =
-        document.getElementById("contribution").value.trim();
+      document.getElementById("contribution").value.trim();
 
     const learning =
-        document.getElementById("learning").value.trim();
+      document.getElementById("learning").value.trim();
 
     const idea =
-        document.getElementById("idea").value.trim();
+      document.getElementById("idea").value.trim();
 
-
-    const interests =
-        [...document.querySelectorAll(
-            '.checkbox-grid input:checked'
-        )].map(input => input.value);
-
+    const interests = [
+      ...document.querySelectorAll(
+        ".checkbox-grid input:checked"
+      )
+    ].map(input => input.value);
 
     const application = {
-
-        name,
-        class: className,
-        interests,
-        contribution,
-        learning,
-        idea,
-
-        createdAt:
-            new Date().toISOString()
-
+      name,
+      class: className,
+      interests,
+      contribution,
+      learning,
+      idea,
+      createdAt: new Date().toISOString()
     };
-
 
     console.log("APPLICATION:", application);
 
-
-    /*
-        TEMPORARY
-
-        Later this will send the application
-        to our Cloudflare Worker / database.
-    */
-
     const message =
-        document.getElementById("formMessage");
+      document.getElementById("formMessage");
 
-    message.innerHTML =
-        "✓ Thank you! Your application has been received.";
+    message.textContent =
+      "✓ Thank you! Your application has been received.";
 
     message.style.color = "#8cffb0";
 
     joinForm.reset();
 
-});
+  });
+
+}
 
 
-/* =========================
-   AI CHAT
-========================= */
+// ============================================================
+// AI CHAT
+// ============================================================
 
 const chatForm =
-    document.getElementById("chatForm");
+  document.getElementById("chatForm");
 
 const chatInput =
-    document.getElementById("chatInput");
+  document.getElementById("chatInput");
 
 const chatMessages =
-    document.getElementById("chatMessages");
+  document.getElementById("chatMessages");
 
 
-chatForm.addEventListener("submit", async (event) => {
+if (chatForm) {
+
+  chatForm.addEventListener("submit", async (event) => {
 
     event.preventDefault();
 
     const question =
-        chatInput.value.trim();
+      chatInput.value.trim();
 
     if (!question) return;
 
@@ -99,145 +98,237 @@ chatForm.addEventListener("submit", async (event) => {
     chatInput.value = "";
 
     const loading =
-        addAIMessage("Thinking...");
-
+      addAIMessage("Thinking...");
 
     try {
 
-        const response =
-            await fetch(API_URL, {
+      const response =
+        await fetch(API_URL, {
 
-                method: "POST",
+          method: "POST",
 
-                headers: {
-                    "Content-Type":
-                        "application/json"
-                },
+          headers: {
+            "Content-Type": "application/json"
+          },
 
-                body: JSON.stringify({
-                    message: question
-                })
+          body: JSON.stringify({
+            message: question
+          })
 
-            });
-
-
-        if (!response.ok) {
-            throw new Error("API error");
-        }
+        });
 
 
-        const data =
-            await response.json();
+      const data =
+        await response.json();
 
 
-        loading.textContent =
-            data.answer || "No answer received.";
+      if (!response.ok) {
+        throw new Error(
+          data.error || "API error"
+        );
+      }
+
+
+      loading.textContent =
+        data.answer ||
+        "I couldn't generate an answer.";
+
+
+      if (
+        Array.isArray(data.sources) &&
+        data.sources.length > 0
+      ) {
+
+        addSources(data.sources);
+
+      }
 
 
     } catch (error) {
 
-        console.error(error);
+      console.error(
+        "BUSINESS AI ERROR:",
+        error
+      );
 
-        /*
-            TEMPORARY FALLBACK
-
-            Until Cloudflare Worker is connected.
-        */
-
-        loading.textContent =
-            "The Business AI will be connected soon. " +
-            "Your question was: " +
-            question;
+      loading.textContent =
+        "Sorry, something went wrong while contacting the Business AI.";
 
     }
 
-});
+    scrollChat();
+
+  });
+
+}
 
 
-/* =========================
-   QUICK QUESTIONS
-========================= */
+// ============================================================
+// QUICK QUESTIONS
+// ============================================================
 
 function askQuickQuestion(question) {
 
-    chatInput.value = question;
+  if (!chatInput || !chatForm) return;
 
-    chatForm.dispatchEvent(
-        new Event("submit")
-    );
+  chatInput.value = question;
+
+  chatForm.dispatchEvent(
+    new Event("submit")
+  );
 
 }
 
 
-/* =========================
-   CHAT UI
-========================= */
+// ============================================================
+// USER MESSAGE
+// ============================================================
 
 function addUserMessage(text) {
 
-    const message =
-        document.createElement("div");
+  const message =
+    document.createElement("div");
 
-    message.className =
-        "message user-message";
+  message.className =
+    "message user-message";
 
-    message.innerHTML =
-        `<div>${escapeHTML(text)}</div>`;
+  message.innerHTML =
+    `<div>${escapeHTML(text)}</div>`;
 
-    chatMessages.appendChild(message);
+  chatMessages.appendChild(message);
 
-    scrollChat();
+  scrollChat();
 
 }
 
+
+// ============================================================
+// AI MESSAGE
+// ============================================================
 
 function addAIMessage(text) {
 
-    const message =
-        document.createElement("div");
+  const message =
+    document.createElement("div");
 
-    message.className =
-        "message ai-message";
+  message.className =
+    "message ai-message";
 
-    message.innerHTML = `
-        <div class="message-avatar">
-            AI
-        </div>
+  message.innerHTML = `
+    <div class="message-avatar">
+      AI
+    </div>
 
-        <div></div>
-    `;
+    <div></div>
+  `;
 
-    const content =
-        message.querySelector(
-            "div:last-child"
-        );
+  const content =
+    message.querySelector("div:last-child");
 
-    content.textContent = text;
+  content.textContent = text;
 
-    chatMessages.appendChild(message);
+  chatMessages.appendChild(message);
 
-    scrollChat();
+  scrollChat();
 
-    return content;
+  return content;
 
 }
 
+
+// ============================================================
+// SOURCES
+// ============================================================
+
+function addSources(sources) {
+
+  const container =
+    document.createElement("div");
+
+  container.className =
+    "ai-sources";
+
+
+  const title =
+    document.createElement("div");
+
+  title.textContent =
+    "Sources";
+
+  title.style.fontWeight =
+    "700";
+
+  title.style.marginBottom =
+    "8px";
+
+
+  container.appendChild(title);
+
+
+  sources.forEach(source => {
+
+    const link =
+      document.createElement("a");
+
+    link.href =
+      source.url;
+
+    link.target =
+      "_blank";
+
+    link.rel =
+      "noopener noreferrer";
+
+    link.textContent =
+      source.title || source.url;
+
+    link.style.display =
+      "block";
+
+    link.style.marginBottom =
+      "5px";
+
+    link.style.color =
+      "#555";
+
+    container.appendChild(link);
+
+  });
+
+
+  chatMessages.appendChild(container);
+
+  scrollChat();
+
+}
+
+
+// ============================================================
+// SCROLL
+// ============================================================
 
 function scrollChat() {
 
-    chatMessages.scrollTop =
-        chatMessages.scrollHeight;
+  if (!chatMessages) return;
+
+  chatMessages.scrollTop =
+    chatMessages.scrollHeight;
 
 }
 
 
+// ============================================================
+// SECURITY
+// ============================================================
+
 function escapeHTML(text) {
 
-    const div =
-        document.createElement("div");
+  const div =
+    document.createElement("div");
 
-    div.textContent = text;
+  div.textContent =
+    text;
 
-    return div.innerHTML;
+  return div.innerHTML;
 
 }
