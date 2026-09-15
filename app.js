@@ -1,6 +1,5 @@
 // ============================================================
-// BUSINESS CLUB
-// APP.JS
+// BUSINESS CLUB - APP.JS
 // ============================================================
 
 const API_URL =
@@ -11,29 +10,28 @@ const API_URL =
 // JOIN FORM
 // ============================================================
 
-const joinForm =
-  document.getElementById("joinForm");
+const joinForm = document.getElementById("joinForm");
 
 if (joinForm) {
 
-  joinForm.addEventListener("submit", async (event) => {
+  joinForm.addEventListener("submit", function (event) {
 
     event.preventDefault();
 
     const name =
-      document.getElementById("name").value.trim();
+      document.getElementById("name")?.value.trim() || "";
 
     const className =
-      document.getElementById("class").value.trim();
+      document.getElementById("class")?.value.trim() || "";
 
     const contribution =
-      document.getElementById("contribution").value.trim();
+      document.getElementById("contribution")?.value.trim() || "";
 
     const learning =
-      document.getElementById("learning").value.trim();
+      document.getElementById("learning")?.value.trim() || "";
 
     const idea =
-      document.getElementById("idea").value.trim();
+      document.getElementById("idea")?.value.trim() || "";
 
     const interests = [
       ...document.querySelectorAll(
@@ -56,10 +54,12 @@ if (joinForm) {
     const message =
       document.getElementById("formMessage");
 
-    message.textContent =
-      "✓ Thank you! Your application has been received.";
+    if (message) {
+      message.textContent =
+        "✓ Thank you! Your application has been received.";
 
-    message.style.color = "#8cffb0";
+      message.style.color = "#8cffb0";
+    }
 
     joinForm.reset();
 
@@ -82,83 +82,111 @@ const chatMessages =
   document.getElementById("chatMessages");
 
 
-if (chatForm) {
+if (chatForm && chatInput) {
 
-  chatForm.addEventListener("submit", async (event) => {
+  chatForm.addEventListener("submit", function (event) {
 
+    // ΠΟΛΥ ΣΗΜΑΝΤΙΚΟ:
+    // Δεν αφήνουμε το form να κάνει reload τη σελίδα.
     event.preventDefault();
+    event.stopPropagation();
 
-    const question =
-      chatInput.value.trim();
+    sendMessage();
 
-    if (!question) return;
+  });
 
-    addUserMessage(question);
-
-    chatInput.value = "";
-
-    const loading =
-      addAIMessage("Thinking...");
-
-    try {
-
-      const response =
-        await fetch(API_URL, {
-
-          method: "POST",
-
-          headers: {
-            "Content-Type": "application/json"
-          },
-
-          body: JSON.stringify({
-            message: question
-          })
-
-        });
+}
 
 
-      const data =
-        await response.json();
+// ============================================================
+// SEND MESSAGE
+// ============================================================
+
+async function sendMessage() {
+
+  if (!chatInput) return;
+
+  const question =
+    chatInput.value.trim();
+
+  if (!question) return;
 
 
-      if (!response.ok) {
-        throw new Error(
-          data.error || "API error"
-        );
-      }
+  // Εμφάνιση ερώτησης χρήστη
+  addUserMessage(question);
 
 
-      loading.textContent =
-        data.answer ||
-        "I couldn't generate an answer.";
+  // Καθαρίζουμε το input
+  chatInput.value = "";
 
 
-      if (
-        Array.isArray(data.sources) &&
-        data.sources.length > 0
-      ) {
-
-        addSources(data.sources);
-
-      }
+  // AI loading message
+  const loading =
+    addAIMessage("Thinking...");
 
 
-    } catch (error) {
+  try {
 
-      console.error(
-        "BUSINESS AI ERROR:",
-        error
+    const response =
+      await fetch(API_URL, {
+
+        method: "POST",
+
+        headers: {
+          "Content-Type": "application/json"
+        },
+
+        body: JSON.stringify({
+          message: question
+        })
+
+      });
+
+
+    const data =
+      await response.json();
+
+
+    if (!response.ok) {
+
+      throw new Error(
+        data.error || "API error"
       );
-
-      loading.textContent =
-        "Sorry, something went wrong while contacting the Business AI.";
 
     }
 
-    scrollChat();
 
-  });
+    // AI answer
+    loading.textContent =
+      data.answer ||
+      "I couldn't generate an answer.";
+
+
+    // Sources
+    if (
+      Array.isArray(data.sources) &&
+      data.sources.length > 0
+    ) {
+
+      addSources(data.sources);
+
+    }
+
+
+  } catch (error) {
+
+    console.error(
+      "BUSINESS AI ERROR:",
+      error
+    );
+
+    loading.textContent =
+      "Sorry, something went wrong while contacting the Business AI.";
+
+  }
+
+
+  scrollChat();
 
 }
 
@@ -169,13 +197,15 @@ if (chatForm) {
 
 function askQuickQuestion(question) {
 
-  if (!chatInput || !chatForm) return;
+  if (!chatInput) return;
 
+
+  // Βάζουμε την ερώτηση στο input
   chatInput.value = question;
 
-  chatForm.dispatchEvent(
-    new Event("submit")
-  );
+
+  // Στέλνουμε απευθείας
+  sendMessage();
 
 }
 
@@ -186,16 +216,27 @@ function askQuickQuestion(question) {
 
 function addUserMessage(text) {
 
+  if (!chatMessages) return;
+
+
   const message =
     document.createElement("div");
 
   message.className =
     "message user-message";
 
-  message.innerHTML =
-    `<div>${escapeHTML(text)}</div>`;
+
+  const content =
+    document.createElement("div");
+
+  content.textContent =
+    text;
+
+
+  message.appendChild(content);
 
   chatMessages.appendChild(message);
+
 
   scrollChat();
 
@@ -208,28 +249,42 @@ function addUserMessage(text) {
 
 function addAIMessage(text) {
 
+  if (!chatMessages) return null;
+
+
   const message =
     document.createElement("div");
 
   message.className =
     "message ai-message";
 
-  message.innerHTML = `
-    <div class="message-avatar">
-      AI
-    </div>
 
-    <div></div>
-  `;
+  const avatar =
+    document.createElement("div");
+
+  avatar.className =
+    "message-avatar";
+
+  avatar.textContent =
+    "AI";
+
 
   const content =
-    message.querySelector("div:last-child");
+    document.createElement("div");
 
-  content.textContent = text;
+  content.textContent =
+    text;
+
+
+  message.appendChild(avatar);
+
+  message.appendChild(content);
 
   chatMessages.appendChild(message);
 
+
   scrollChat();
+
 
   return content;
 
@@ -241,6 +296,9 @@ function addAIMessage(text) {
 // ============================================================
 
 function addSources(sources) {
+
+  if (!chatMessages) return;
+
 
   const container =
     document.createElement("div");
@@ -267,6 +325,9 @@ function addSources(sources) {
 
   sources.forEach(source => {
 
+    if (!source?.url) return;
+
+
     const link =
       document.createElement("a");
 
@@ -280,7 +341,9 @@ function addSources(sources) {
       "noopener noreferrer";
 
     link.textContent =
-      source.title || source.url;
+      source.title ||
+      source.url;
+
 
     link.style.display =
       "block";
@@ -290,6 +353,7 @@ function addSources(sources) {
 
     link.style.color =
       "#555";
+
 
     container.appendChild(link);
 
@@ -304,31 +368,49 @@ function addSources(sources) {
 
 
 // ============================================================
-// SCROLL
+// SCROLL CHAT
 // ============================================================
 
 function scrollChat() {
 
   if (!chatMessages) return;
 
-  chatMessages.scrollTop =
-    chatMessages.scrollHeight;
+
+  chatMessages.scrollTo({
+
+    top:
+      chatMessages.scrollHeight,
+
+    behavior:
+      "smooth"
+
+  });
 
 }
 
 
 // ============================================================
-// SECURITY
+// ENTER KEY
 // ============================================================
 
-function escapeHTML(text) {
+if (chatInput) {
 
-  const div =
-    document.createElement("div");
+  chatInput.addEventListener(
+    "keydown",
+    function (event) {
 
-  div.textContent =
-    text;
+      if (
+        event.key === "Enter" &&
+        !event.shiftKey
+      ) {
 
-  return div.innerHTML;
+        event.preventDefault();
+
+        sendMessage();
+
+      }
+
+    }
+  );
 
 }
